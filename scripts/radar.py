@@ -1,23 +1,6 @@
 #!/usr/bin/env python3
 """
-radar.py - render a spider / radar chart as a standalone SVG. Stdlib only.
-
-Two sources of data:
-
-  1. a JSON file you control (default)
-        python scripts/radar.py --data assets/skills.json -o assets/radar
-
-  2. live language stats from the GitHub API
-        python scripts/radar.py --github YOUR_USERNAME -o assets/radar-langs
-
-Writes <out>-dark.svg and <out>-light.svg so the README can swap them with
-<picture> + prefers-color-scheme.
-
-skills.json shape:
-    {
-      "title": "Skill Radar",
-      "axes": [ {"label": "Python", "value": 88}, ... ]      // value 0-100
-    }
+radar.py - Cyber-Telemetry HUD Radar Chart Generator (Stdlib only).
 """
 
 from __future__ import annotations
@@ -33,41 +16,50 @@ from pathlib import Path
 
 THEMES = {
     "dark": {
-        "grid": "#30363d",
-        "spoke": "#21262d",
-        "label": "#c9d1d9",
-        "value": "#8b949e",
-        "title": "#e6edf3",
-        "fill": "#8a2be2",
-        "stroke": "#8a2be2",
-        "vertex": "#8a2be2",
-        "bg": "none",
+        "bg": "#090F1E",
+        "panel_border": "#1E2D4A",
+        "header_bg": "#0D1528",
+        "grid": "#1E293B",
+        "grid_outer": "#334155",
+        "spoke": "#1E293B",
+        "label": "#E2E8F0",
+        "value": "#00F5D4",
+        "title": "#00F5D4",
+        "subtitle": "#64748B",
+        "fill_start": "#00F5D4",
+        "fill_end": "#818CF8",
+        "stroke": "#00F5D4",
+        "vertex": "#090F1E",
+        "vertex_Ring": "#00F5D4",
     },
     "light": {
-        "grid": "#d0d7de",
-        "spoke": "#e6eaef",
-        "label": "#1f2328",
-        "value": "#57606a",
-        "title": "#1f2328",
-        "fill": "#8a2be2",
-        "stroke": "#8a2be2",
-        "vertex": "#8a2be2",
-        "bg": "none",
+        "bg": "#FFFFFF",
+        "panel_border": "#CBD5E1",
+        "header_bg": "#F8FAFC",
+        "grid": "#E2E8F0",
+        "grid_outer": "#94A3B8",
+        "spoke": "#E2E8F0",
+        "label": "#0F172A",
+        "value": "#0D9488",
+        "title": "#0F172A",
+        "subtitle": "#64748B",
+        "fill_start": "#0D9488",
+        "fill_end": "#4F46E5",
+        "stroke": "#0D9488",
+        "vertex": "#FFFFFF",
+        "vertex_Ring": "#0D9488",
     },
 }
 
 UA = {"User-Agent": "radar.py"}
-
-
-# --------------------------------------------------------------------------- #
-# data sources
-# --------------------------------------------------------------------------- #
+FONT = "ui-monospace,SFMono-Regular,Consolas,monospace"
+LBL, VAL, TTL = 12, 11, 13
 
 
 def from_json(path: Path):
     d = json.loads(path.read_text(encoding="utf-8"))
     axes = [(a["label"], float(a["value"])) for a in d["axes"]]
-    return d.get("title", "Skill Radar"), axes
+    return d.get("title", "TELEMETRY.RADAR"), axes
 
 
 def _api(url, token):
@@ -80,7 +72,6 @@ def _api(url, token):
 
 def from_github(user: str, token: str | None, limit: int, exclude: set[str],
                 curve: float):
-    """Sum language bytes across the user's non-fork public repos."""
     totals: dict[str, int] = {}
     page = 1
     while True:
@@ -107,28 +98,15 @@ def from_github(user: str, token: str | None, limit: int, exclude: set[str],
         page += 1
 
     if not totals:
-        sys.exit(f"no language data found for '{user}' (private repos need a token)")
+        sys.exit(f"no language data found for '{user}'")
 
     top = sorted(totals.items(), key=lambda kv: -kv[1])[:limit]
     peak = top[0][1]
-    # Raw byte ratios are brutally lopsided — one dominant language leaves every
-    # other axis pinned near the centre and the shape reads as a spike. `curve`
-    # compresses that: 1.0 is linear, 0.5 (default) is sqrt, lower spreads more.
     axes = [(n, round(100 * (c / peak) ** curve, 1)) for n, c in top]
-    return f"{user} · language mix", axes
-
-
-# --------------------------------------------------------------------------- #
-# rendering
-# --------------------------------------------------------------------------- #
-
-
-FONT = "ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif"
-LBL, VAL, TTL = 13, 11, 15  # font sizes: axis label, axis value, title
+    return f"{user.upper()} · LANGUAGE.MIX", axes
 
 
 def ring(radius, n, start=-math.pi / 2):
-    """Vertices of a regular n-gon centred on (0, 0), first one straight up."""
     return [
         (radius * math.cos(start + i * 2 * math.pi / n),
          radius * math.sin(start + i * 2 * math.pi / n))
@@ -137,37 +115,36 @@ def ring(radius, n, start=-math.pi / 2):
 
 
 def text_width(s, font_size):
-    """Rough advance width for a humanist sans. Deliberately generous —
-    it only feeds the bounding box, so over-estimating just adds padding."""
     return len(s) * font_size * 0.62
+
+
+def esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def render(title, axes, theme: str, size: int, rings: int, show_values: bool,
            animate: bool) -> str:
     c = THEMES[theme]
     n = len(axes)
-    r = size / 2 - 8
-    gap = 20  # how far the labels sit beyond the outer ring
+    r = size / 2 - 42
+    gap = 24
 
     vals = [max(0.0, min(100.0, v)) for _, v in axes]
     outer = ring(r, n)
 
-    # Lay the labels out first, in centre-relative coordinates, so the viewBox
-    # can be sized around whatever they actually occupy. A fixed viewBox clips
-    # long labels on the left/right spokes.
     labels = []
     for i, (label, _) in enumerate(axes):
         ang = -math.pi / 2 + i * 2 * math.pi / n
         cosv, sinv = math.cos(ang), math.sin(ang)
         lx, ly = (r + gap) * cosv, (r + gap) * sinv
         anchor = "middle" if abs(cosv) < 0.25 else ("start" if cosv > 0 else "end")
-        dy = 4 if abs(sinv) < 0.25 else (14 if sinv > 0 else -5)
+        dy = 4 if abs(sinv) < 0.25 else (12 if sinv > 0 else -6)
         labels.append((lx, ly + dy, anchor, label, vals[i]))
 
-    minx, maxx, miny, maxy = -r, r, -r, r
+    minx, maxx, miny, maxy = -r - 20, r + 20, -r - 20, r + 20
     for lx, ly, anchor, label, v in labels:
         w = max(text_width(label, LBL),
-                text_width(f"{v:g}", VAL) if show_values else 0.0)
+                text_width(f"[{v:g}%]", VAL) if show_values else 0.0)
         if anchor == "start":
             x0, x1 = lx, lx + w
         elif anchor == "end":
@@ -175,122 +152,124 @@ def render(title, axes, theme: str, size: int, rings: int, show_values: bool,
         else:
             x0, x1 = lx - w / 2, lx + w / 2
         y0 = ly - LBL
-        y1 = ly + 4 + (VAL + 4 if show_values else 0)
+        y1 = ly + 6 + (VAL + 6 if show_values else 0)
         minx, maxx = min(minx, x0), max(maxx, x1)
         miny, maxy = min(miny, y0), max(maxy, y1)
 
-    pad = 10
-    title_h = TTL + 14 if title else 0
-    W = round((maxx - minx) + 2 * pad)
-    H = round((maxy - miny) + 2 * pad + title_h)
-    ox, oy = -minx + pad, -miny + pad + title_h
+    pad = 24
+    header_h = 40
+    footer_h = 26
+    W = max(420, round((maxx - minx) + 2 * pad))
+    H = round((maxy - miny) + 2 * pad + header_h + footer_h)
+    ox = W / 2
+    oy = -miny + pad + header_h
 
-    # A long title ("<user> · language mix") can be wider than the chart itself.
-    # Widen the canvas and re-centre the chart inside it rather than clipping.
-    if title:
-        need = round(text_width(title, TTL) + 2 * pad)
-        if need > W:
-            ox += (need - W) / 2
-            W = need
+    avg_score = sum(vals) / len(vals)
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
         f'width="{W}" height="{H}" role="img" '
-        f'aria-label="{esc(title) or "radar chart"}" font-family="{FONT}">'
+        f'aria-label="{esc(title)}" font-family="{FONT}">',
+        "<defs>",
+        '<radialGradient id="polyGrad" cx="50%" cy="50%" r="50%">'
+        f'<stop offset="0%" stop-color="{c["fill_end"]}" stop-opacity="0.15"/>'
+        f'<stop offset="100%" stop-color="{c["fill_start"]}" stop-opacity="0.42"/>'
+        "</radialGradient>",
+        '<filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">'
+        f'<feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="{c["stroke"]}" flood-opacity="0.55"/>'
+        "</filter>",
+        "</defs>",
+        # Card container
+        f'<rect x="2" y="2" width="{W - 4}" height="{H - 4}" rx="10" fill="{c["bg"]}" '
+        f'stroke="{c["panel_border"]}" stroke-width="1.5"/>',
+        f'<rect x="3" y="3" width="{W - 6}" height="{header_h}" rx="9" fill="{c["header_bg"]}"/>',
+        f'<line x1="2" y1="{header_h}" x2="{W - 2}" y2="{header_h}" stroke="{c["panel_border"]}"/>',
+        # Header title & decorative dots
+        f'<text x="16" y="25" font-size="{TTL}" font-weight="700" letter-spacing="1" fill="{c["title"]}">'
+        f'◈ {esc(title.upper())}</text>',
+        f'<text x="{W - 16}" y="25" text-anchor="end" font-size="11" fill="{c["subtitle"]}">'
+        f'AVG: {avg_score:.1f}%</text>',
+        f'<g transform="translate({ox:.1f},{oy:.1f})">',
     ]
-    if c["bg"] != "none":
-        parts.append(f'<rect width="100%" height="100%" fill="{c["bg"]}"/>')
-    if title:
-        parts.append(
-            f'<text x="{W / 2:.1f}" y="{pad + TTL:.0f}" text-anchor="middle" '
-            f'font-size="{TTL}" font-weight="700" fill="{c["title"]}">'
-            f'{esc(title)}</text>'
-        )
-    parts.append(f'<g transform="translate({ox:.1f},{oy:.1f})">')
 
-    # concentric rings, faintest in the middle
+    # Concentric rings + reference circles
     for k in range(rings, 0, -1):
         d = " ".join(f"{x:.1f},{y:.1f}" for x, y in ring(r * k / rings, n))
+        is_outer = k == rings
+        stroke_col = c["grid_outer"] if is_outer else c["grid"]
+        dash = "" if is_outer else 'stroke-dasharray="3 3"'
         parts.append(
-            f'<polygon points="{d}" fill="none" stroke="{c["grid"]}" '
-            f'stroke-width="1" opacity="{0.35 + 0.5 * k / rings:.2f}"/>'
+            f'<polygon points="{d}" fill="none" stroke="{stroke_col}" '
+            f'stroke-width="{1.4 if is_outer else 1}" {dash}/>'
         )
 
-    # spokes
+    # Crosshair spokes
     for x, y in outer:
         parts.append(
             f'<line x1="0" y1="0" x2="{x:.1f}" y2="{y:.1f}" '
             f'stroke="{c["spoke"]}" stroke-width="1"/>'
         )
 
-    # the data shape. SMIL rather than CSS: animateTransform scales about the
-    # group's own origin, which is already the centre of the chart here.
+    # Data polygon with glow
     shape = [(px * v / 100, py * v / 100) for (px, py), v in zip(outer, vals)]
     d = " ".join(f"{x:.1f},{y:.1f}" for x, y in shape)
     parts.append("<g>")
     if animate:
         parts.append(
             '<animateTransform attributeName="transform" type="scale" '
-            'values="0.04;1" dur="1.1s" calcMode="spline" keyTimes="0;1" '
-            'keySplines="0.22 1 0.36 1" fill="freeze"/>'
+            'values="0.05;1" dur="1.2s" calcMode="spline" keyTimes="0;1" '
+            'keySplines="0.16 1 0.3 1" fill="freeze"/>'
         )
     parts.append(
-        f'<polygon points="{d}" fill="{c["fill"]}" fill-opacity="0.22" '
-        f'stroke="{c["stroke"]}" stroke-width="2.5" stroke-linejoin="round"/>'
+        f'<polygon points="{d}" fill="url(#polyGrad)" '
+        f'stroke="{c["stroke"]}" stroke-width="2.2" stroke-linejoin="round" filter="url(#neonGlow)"/>'
     )
     for x, y in shape:
         parts.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.6" fill="{c["vertex"]}" '
-            f'stroke="{c["stroke"]}" stroke-width="1.2"/>'
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{c["vertex"]}" '
+            f'stroke="{c["vertex_Ring"]}" stroke-width="2.2"/>'
         )
     parts.append("</g>")
 
-    # axis labels
+    # Axis labels + percentage tags
     for lx, ly, anchor, label, v in labels:
         parts.append(
             f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
-            f'font-size="{LBL}" font-weight="600" fill="{c["label"]}">'
+            f'font-size="{LBL}" font-weight="700" fill="{c["label"]}">'
             f'{esc(label)}</text>'
         )
         if show_values:
             parts.append(
                 f'<text x="{lx:.1f}" y="{ly + VAL + 4:.1f}" text-anchor="{anchor}" '
-                f'font-size="{VAL}" fill="{c["value"]}">{v:g}</text>'
+                f'font-size="{VAL}" font-weight="600" fill="{c["value"]}">[{v:g}%]</text>'
             )
 
-    parts.append("</g></svg>")
+    parts.extend([
+        "</g>",
+        f'<line x1="2" y1="{H - footer_h}" x2="{W - 2}" y2="{H - footer_h}" stroke="{c["panel_border"]}"/>',
+        f'<text x="16" y="{H - 9}" font-size="10" fill="{c["subtitle"]}">'
+        f'AXES: 0{n} · SCALE: NORMALIZED [0-100]</text>',
+        f'<text x="{W - 16}" y="{H - 9}" text-anchor="end" font-size="10" fill="{c["value"]}">'
+        '● TELEMETRY ACTIVE</text>',
+        "</svg>",
+    ])
     return "".join(parts)
 
 
-def esc(s: str) -> str:
-    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
-
-
-# --------------------------------------------------------------------------- #
-
-
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser()
     src = p.add_mutually_exclusive_group()
     src.add_argument("--data", type=Path, default=Path("assets/skills.json"))
-    src.add_argument("--github", metavar="USER",
-                     help="build the radar from GitHub language stats instead")
-    p.add_argument("-o", "--out", type=Path, default=Path("assets/radar"),
-                   help="output path WITHOUT extension")
-    p.add_argument("--title", help="override the chart title ('' for none)")
-    p.add_argument("--size", type=int, default=440)
+    src.add_argument("--github", metavar="USER")
+    p.add_argument("-o", "--out", type=Path, default=Path("assets/radar"))
+    p.add_argument("--title")
+    p.add_argument("--size", type=int, default=420)
     p.add_argument("--rings", type=int, default=4)
-    p.add_argument("--limit", type=int, default=7,
-                   help="max axes when using --github")
-    p.add_argument("--exclude", default="html,css,shell,makefile,dockerfile,batchfile",
-                   help="comma-separated languages to skip in --github mode")
-    p.add_argument("--curve", type=float, default=0.5,
-                   help="--github axis scaling: 1.0 linear, 0.5 sqrt (default), "
-                        "0.3 flattens a one-language-dominant profile")
-    p.add_argument("--values", action="store_true", help="print the number per axis")
-    p.add_argument("--no-animate", dest="animate", action="store_false",
-                   help="disable the grow-in animation")
+    p.add_argument("--limit", type=int, default=6)
+    p.add_argument("--exclude", default="html,css,shell,makefile,dockerfile,batchfile")
+    p.add_argument("--curve", type=float, default=0.5)
+    p.add_argument("--values", action="store_true")
+    p.add_argument("--no-animate", dest="animate", action="store_false")
     args = p.parse_args(argv)
 
     if args.github:
