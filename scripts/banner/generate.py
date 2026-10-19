@@ -19,7 +19,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "assets"
-SPRITES_DIR = ASSETS / "sprites"
+SPRITES_DIR = ASSETS / "sprites" / "sprites_extraidos"
 
 W, H = 1180, 610
 
