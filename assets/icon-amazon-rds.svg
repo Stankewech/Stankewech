@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">Amazon RDS</title>
+  <rect width="48" height="48" rx="10" fill="#1d1d23"/>
+  <ellipse cx="24" cy="14" rx="13" ry="5.5" fill="none" stroke="#c7a4f5" stroke-width="2.6"/>
+  <path d="M11 14v10c0 3 5.8 5.5 13 5.5S37 27 37 24V14" fill="none" stroke="#c7a4f5" stroke-width="2.6"/>
+  <path d="M11 24v10c0 3 5.8 5.5 13 5.5S37 37 37 34V24" fill="none" stroke="#76d8d2" stroke-width="2.6"/>
+  <circle cx="32" cy="34" r="2" fill="#f3a0b5"/>
+</svg>

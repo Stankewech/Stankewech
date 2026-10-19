@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">Amazon CloudWatch</title>
+  <rect width="48" height="48" rx="10" fill="#1d1d23"/>
+  <path d="M10 37V11M10 37h29" fill="none" stroke="#c7a4f5" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M14 31l7-8 6 4 9-12" fill="none" stroke="#f3a0b5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="14" cy="31" r="2.5" fill="#76d8d2"/>
+  <circle cx="21" cy="23" r="2.5" fill="#76d8d2"/>
+  <circle cx="27" cy="27" r="2.5" fill="#76d8d2"/>
+  <circle cx="36" cy="15" r="2.5" fill="#76d8d2"/>
+</svg>

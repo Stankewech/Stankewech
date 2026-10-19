@@ -1,0 +1,11 @@
+{
+  "title": "Stankewech · language mix",
+  "axes": [
+    {"label": "Python", "value": 95},
+    {"label": "SQL", "value": 88},
+    {"label": "C / C++", "value": 82},
+    {"label": "Dart", "value": 80},
+    {"label": "JavaScript", "value": 75},
+    {"label": "Bash / Shell", "value": 78}
+  ]
+}

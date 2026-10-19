@@ -1,0 +1,11 @@
+{
+  "title": "Telematics & Software Radar",
+  "axes": [
+    {"label": "Backend (FastAPI/Python)", "value": 95},
+    {"label": "Machine Learning", "value": 90},
+    {"label": "Redes & 5G (ns-3)", "value": 85},
+    {"label": "Bases de Datos (SQL)", "value": 88},
+    {"label": "Sistemas Embebidos / IoT", "value": 82},
+    {"label": "Linux & Networking", "value": 85}
+  ]
+}

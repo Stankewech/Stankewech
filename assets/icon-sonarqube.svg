@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">SonarQube</title>
+  <rect width="48" height="48" rx="10" fill="#1d1d23"/>
+  <path d="M10 32c8-12 18-16 29-17" fill="none" stroke="#76d8d2" stroke-width="3" stroke-linecap="round"/>
+  <path d="M12 38c8-11 17-15 28-16" fill="none" stroke="#c7a4f5" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="13" cy="17" r="3.2" fill="#f3a0b5"/>
+  <path d="M20 13h18" stroke="#f3d29b" stroke-width="2.4" stroke-linecap="round"/>
+</svg>
