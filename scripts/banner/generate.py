@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Generate a Fluid Animated 8-bit SVG banner using custom PNG sprites.
-Seamless background integration with high-resolution 56-frame timeline.
+"""Generate an animated 8-bit SVG banner using custom PNG sprites.
+- UI background matched to sprite's background.
+- Floor grid removed to prevent canvas bounding-box occlusion.
+- High-fluidity 32-frame timeline (0.15s per frame).
 
 Run from the repository root:
     python scripts/banner/generate.py
@@ -70,7 +72,6 @@ THEMES = {
     },
 }
 
-
 def edge_connected(mask: np.ndarray) -> np.ndarray:
     connected = np.zeros(mask.shape, dtype=bool)
     queue: deque[tuple[int, int]] = deque()
@@ -88,7 +89,6 @@ def edge_connected(mask: np.ndarray) -> np.ndarray:
             if 0 <= ny < height and 0 <= nx < width:
                 queue.append((ny, nx))
     return connected
-
 
 def load_pixel_badge(name: str) -> str | None:
     for ext in (".png", ".webp", ".jpg", ".jpeg"):
@@ -113,7 +113,6 @@ def load_pixel_badge(name: str) -> str | None:
                 return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode('ascii')}"
     return None
 
-
 def fallback_corner_emblems(t: dict[str, str]) -> str:
     return (
         '<g shape-rendering="crispEdges">'
@@ -136,7 +135,6 @@ def fallback_corner_emblems(t: dict[str, str]) -> str:
         '</g>'
     )
 
-
 def load_sprites() -> tuple[dict[str, str], str]:
     loaded: dict[str, str] = {}
     search_dirs = [SPRITES_DIR, ASSETS, ROOT]
@@ -158,7 +156,7 @@ def load_sprites() -> tuple[dict[str, str], str]:
                     if not loaded:
                         global_bg_hex = current_bg_hex
 
-                    target_height = 230
+                    target_height = 245
                     scale = target_height / max(1, img.height)
                     new_w = max(1, int(round(img.width * scale)))
                     new_h = max(1, int(round(img.height * scale)))
@@ -167,7 +165,7 @@ def load_sprites() -> tuple[dict[str, str], str]:
                     canvas_w, canvas_h = 240, 250
                     canvas = Image.new("RGB", (canvas_w, canvas_h), bg_rgb)
                     offset_x = (canvas_w - new_w) // 2
-                    offset_y = canvas_h - new_h - 6
+                    offset_y = canvas_h - new_h
                     canvas.paste(resized, (max(0, offset_x), max(0, offset_y)))
 
                     buf = io.BytesIO()
@@ -180,51 +178,50 @@ def load_sprites() -> tuple[dict[str, str], str]:
     
     return loaded, global_bg_hex
 
-
 def build_timeline(sprites: dict[str, str]) -> list[tuple[str, int, int, int]]:
-    """Línea de tiempo de Alta Resolución (56 frames) para una animación super fluida."""
+    # Timeline súper fluido de 32 cuadros. 
+    # dx = desplazamiento horizontal, sec = seccion YAML, laser = on/off
     desired_sequence = [
-        # Idle (16 cuadros = respiración natural fluida)
-        ("sprite_01", 0, 0, 0), ("sprite_01", 0, 0, 0),
-        ("sprite_02", 0, 0, 0), ("sprite_02", 0, 0, 0),
-        ("sprite_03", 0, 0, 0), ("sprite_03", 0, 0, 0),
-        ("sprite_04", 0, 0, 0), ("sprite_04", 0, 0, 0),
-        ("sprite_01", 0, 0, 0), ("sprite_01", 0, 0, 0),
-        ("sprite_02", 0, 0, 0), ("sprite_02", 0, 0, 0),
-        ("sprite_03", 0, 0, 0), ("sprite_03", 0, 0, 0),
-        ("sprite_04", 0, 0, 0), ("sprite_04", 0, 0, 0),
-
-        # Preparación del brazo suave (4 cuadros)
-        ("sprite_09", 0, 0, 0), ("sprite_09", 0, 0, 0),
-        ("sprite_10", 0, 0, 0), ("sprite_10", 0, 0, 0),
-
-        # Señalar Sección 1 (8 cuadros)
-        ("sprite_11", 0, 0, 1), ("sprite_11", 0, 0, 1),
-        ("sprite_12", 0, 0, 1), ("sprite_12", 0, 0, 1),
-        ("sprite_11", 0, 0, 1), ("sprite_11", 0, 0, 1),
-        ("sprite_12", 0, 0, 1), ("sprite_12", 0, 0, 1),
-
-        # Señalar Sección 2 (8 cuadros)
-        ("sprite_11", 0, 1, 1), ("sprite_11", 0, 1, 1),
-        ("sprite_12", 0, 1, 1), ("sprite_12", 0, 1, 1),
-        ("sprite_11", 0, 1, 1), ("sprite_11", 0, 1, 1),
-        ("sprite_12", 0, 1, 1), ("sprite_12", 0, 1, 1),
-
-        # Señalar Sección 3 (8 cuadros)
-        ("sprite_11", 0, 2, 1), ("sprite_11", 0, 2, 1),
-        ("sprite_12", 0, 2, 1), ("sprite_12", 0, 2, 1),
-        ("sprite_11", 0, 2, 1), ("sprite_11", 0, 2, 1),
-        ("sprite_12", 0, 2, 1), ("sprite_12", 0, 2, 1),
-
-        # Guardar brazo suavemente (4 cuadros)
-        ("sprite_10", 0, 2, 0), ("sprite_10", 0, 2, 0),
-        ("sprite_09", 0, 2, 0), ("sprite_09", 0, 2, 0),
-
-        # Emote de cierre fluido (8 cuadros)
-        ("sprite_16", 0, 2, 0), ("sprite_16", 0, 2, 0),
-        ("sprite_16", 0, 2, 0), ("sprite_16", 0, 2, 0),
-        ("sprite_16", 0, 2, 0), ("sprite_16", 0, 2, 0),
-        ("sprite_16", 0, 2, 0), ("sprite_16", 0, 2, 0),
+        # Entrada fluida
+        ("sprite_05", -50, 0, 0),
+        ("sprite_06", -35, 0, 0),
+        ("sprite_05", -20, 0, 0),
+        ("sprite_06", -10, 0, 0),
+        # Respiración (Idle)
+        ("sprite_01",   0, 0, 0),
+        ("sprite_02",   0, 0, 0),
+        ("sprite_03",   0, 0, 0),
+        ("sprite_04",   0, 0, 0),
+        ("sprite_01",   0, 0, 0),
+        ("sprite_02",   0, 0, 0),
+        ("sprite_03",   0, 0, 0),
+        ("sprite_04",   0, 0, 0),
+        # Preparar brazo
+        ("sprite_09",   2, 0, 0),
+        ("sprite_10",   4, 0, 0),
+        # Señalar Sec 1 (Hold para que se vea claro)
+        ("sprite_11",   6, 0, 1),
+        ("sprite_12",   6, 0, 1),
+        ("sprite_12",   6, 0, 1),
+        ("sprite_12",   6, 0, 1),
+        # Señalar Sec 2
+        ("sprite_11",   6, 1, 1),
+        ("sprite_12",   6, 1, 1),
+        ("sprite_12",   6, 1, 1),
+        ("sprite_12",   6, 1, 1),
+        # Señalar Sec 3
+        ("sprite_11",   6, 2, 1),
+        ("sprite_12",   6, 2, 1),
+        ("sprite_12",   6, 2, 1),
+        ("sprite_12",   6, 2, 1),
+        # Bajar brazo
+        ("sprite_10",   4, 2, 0),
+        ("sprite_09",   2, 2, 0),
+        # Emote final
+        ("sprite_16",   0, 2, 0),
+        ("sprite_16",   0, 2, 0),
+        ("sprite_16",   0, 2, 0),
+        ("sprite_16",   0, 2, 0),
     ]
 
     fallback_key = sorted(sprites.keys())[0]
@@ -234,13 +231,13 @@ def build_timeline(sprites: dict[str, str]) -> list[tuple[str, int, int, int]]:
         timeline.append((actual_key, dx, sec, laser))
     return timeline
 
-
 def render_svg(theme_name: str, sprites: dict[str, str], sprite_bg: str, ipn_b64: str | None, upiita_b64: str | None) -> str:
     t = THEMES[theme_name]
     timeline = build_timeline(sprites)
     n_steps = len(timeline)
-    # 0.12s por frame a 56 cuadros = 6.72s por ciclo (extremadamente fluido)
-    cycle_dur = f"{n_steps * 0.12:.2f}s"
+    
+    # 0.15s por cuadro = Animación ágil y súper fluida (6.6 FPS)
+    cycle_dur = f"{n_steps * 0.15:.2f}s"
 
     sec_y = {0: 132, 1: 262, 2: 412}
     sec_h = {0: 128, 1: 148, 2: 90}
@@ -279,13 +276,14 @@ def render_svg(theme_name: str, sprites: dict[str, str], sprite_bg: str, ipn_b64
         '</circle>',
         f'<text x="1067" y="42" fill="{t["accent"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11" font-weight="700" letter-spacing="1">SPRITE ENGINE</text>',
         
-        # Fondo limpio sin rejilla que delate el recuadro del PNG
+        # PANEL IZQUIERDO: FONDO SÓLIDO (Sin rejilla para evitar oclusiones)
         f'<rect x="35" y="88" width="418" height="472" rx="6" fill="{sprite_bg}" stroke="{t["line"]}"/>',
         f'<path d="M35 124H453" stroke="{t["line"]}"/>',
         f'<text x="49" y="111" fill="{t["cyan"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="13" font-weight="700" letter-spacing="1.2">◈ PLAYER.01 // STANKEWECH</text>',
         f'<text x="438" y="111" text-anchor="end" fill="{t["muted"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11">8-BIT / CUSTOM SPRITES</text>',
     ]
 
+    # Logos institucionales
     if ipn_b64 and upiita_b64:
         parts.extend([
             f'<image x="48" y="136" width="64" height="64" href="{ipn_b64}" style="image-rendering: pixelated;">'
@@ -298,6 +296,7 @@ def render_svg(theme_name: str, sprites: dict[str, str], sprite_bg: str, ipn_b64
     else:
         parts.append(fallback_corner_emblems(t))
 
+    # Sprites Render Loop
     for step_idx, (sp_key, dx, _, _) in enumerate(timeline):
         op_list = ["0"] * n_steps
         op_list[step_idx] = "1"
@@ -324,9 +323,10 @@ def render_svg(theme_name: str, sprites: dict[str, str], sprite_bg: str, ipn_b64
         f'<animate attributeName="opacity" values="{speech_1_op}" dur="{cycle_dur}" calcMode="discrete" repeatCount="indefinite"/>'
         '</text>',
         f'<text x="52" y="551" fill="{t["muted"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="10">'
-        f'IPN · UPIITA // FLUID MODE (56 FPS) // SYNC: ACTIVE</text>',
+        f'IPN · UPIITA // SPRITES LOADED: {len(sprites):02d} · LOOP: {cycle_dur}</text>',
     ])
 
+    # Panel Derecho: YAML y Láser Sincronizado
     parts.extend([
         f'<rect x="474" y="88" width="672" height="472" rx="6" fill="{t["panel2"]}" stroke="{t["line"]}"/>',
         f'<path d="M474 124H1146" stroke="{t["line"]}"/>',
@@ -373,12 +373,11 @@ def render_svg(theme_name: str, sprites: dict[str, str], sprite_bg: str, ipn_b64
         f'<rect x="588" y="533" width="70" height="20" rx="3" fill="{t["chrome"]}" opacity=".2"/>',
         f'<text x="623" y="547" text-anchor="middle" fill="{t["chrome"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11" font-weight="700">⎇ main</text>',
         f'<text x="672" y="547" fill="{t["text"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12" font-weight="600">UPIITA-IPN</text>',
-        f'<text x="770" y="547" fill="{t["muted"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11">[custom-sprites · 8-bit · ml]</text>',
+        f'<text x="770" y="547" fill="{t["muted"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11">[custom-sprites · 6.6 FPS]</text>',
         f'<text x="1134" y="547" text-anchor="end" fill="{t["cyan"]}" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11" font-weight="700">100% ☰ 17:42</text>',
         "</svg>",
     ])
     return "".join(parts)
-
 
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
@@ -392,8 +391,7 @@ def main() -> None:
         svg = render_svg(theme, sprites, global_bg, ipn_b64, upiita_b64)
         output = ASSETS / f"banner-{theme}.v9.svg"
         output.write_text(svg, encoding="utf-8")
-        print(f"Generado: {output.relative_to(ROOT)} (Fondo UI adaptado a {global_bg} - Grid eliminado)")
-
+        print(f"Generado: {output.relative_to(ROOT)} (Fondo UI adaptado a {global_bg} - Grid Removido)")
 
 if __name__ == "__main__":
     main()
